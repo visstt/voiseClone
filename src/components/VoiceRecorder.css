@@ -119,7 +119,8 @@
 }
 
 .wave-container,
-.recording-waveform {
+.recording-waveform,
+.realtime-waveform {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,6 +132,13 @@
   margin-bottom: 1rem;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.realtime-waveform {
+  padding: 0;
+  border: 2px solid rgba(49, 130, 206, 0.3);
+  background: #141414;
+  box-shadow: 0 4px 15px rgba(49, 130, 206, 0.2);
 }
 
 .wave-bar {
