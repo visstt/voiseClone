@@ -14,6 +14,27 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [clonedAudioData, setClonedAudioData] = useState<{
+    id: number;
+    originalUrl: string;
+    clonedUrl: string;
+    voiceId: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [chatResponses, setChatResponses] = useState<
+    {
+      id: number;
+      question: string;
+      audioUrl: string;
+    }[]
+  >([]);
+  const [isLoadingResponses, setIsLoadingResponses] = useState(false);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null);
 
   const waveformRef = useRef<HTMLDivElement>(null);
   const realtimeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -357,6 +378,276 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     }
   };
 
+  // Функция для конвертации WAV в MP3
+  const convertToMp3 = async (audioBlob: Blob): Promise<Blob> => {
+    // Для простоты, пока отправляем WAV файл напрямую
+    // В реальном проекте можно использовать библиотеку как lamejs для конвертации
+    return audioBlob;
+  };
+
+  // Функция для загрузки аудио на сервер
+  const uploadAudio = async () => {
+    if (!audioURL) {
+      setError("No audio to upload");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+
+      // Получаем blob из URL
+      const response = await fetch(audioURL);
+      const audioBlob = await response.blob();
+
+      // Конвертируем в MP3 (пока просто используем оригинальный blob)
+      const mp3Blob = await convertToMp3(audioBlob);
+
+      // Создаем FormData для отправки
+      const formData = new FormData();
+      formData.append("file", mp3Blob, "recording.wav"); // Изменили с "audio" на "file"
+
+      // Отправляем на сервер
+      const uploadResponse = await fetch("http://localhost:3000/audio/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => null);
+        console.error("Server error response:", errorData);
+        throw new Error(
+          `Upload failed: ${uploadResponse.statusText}${
+            errorData ? ` - ${errorData.message}` : ""
+          }`
+        );
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const audioId = uploadResult.id;
+
+      console.log("Audio uploaded successfully, ID:", audioId);
+
+      // Начинаем проверку статуса
+      pollAudioStatus(audioId);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError(err instanceof Error ? err.message : "Upload failed");
+      setIsUploading(false);
+    }
+  };
+
+  // Функция для проверки статуса обработки
+  const pollAudioStatus = async (id: number) => {
+    try {
+      setIsProcessing(true);
+
+      const checkStatus = async (): Promise<void> => {
+        const response = await fetch(
+          `http://localhost:3000/audio/status/${id}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Status check failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("Status check result:", data);
+
+        if (data.status === "completed") {
+          setClonedAudioData(data);
+          setIsUploading(false);
+          setIsProcessing(false);
+          onVoiceCloned(true);
+          console.log("Voice cloning completed!", data);
+          console.log(
+            "🚀 About to load chat responses with voiceId:",
+            data.voiceId
+          );
+
+          // Загружаем готовые голосовые ответы
+          loadChatResponses(data.voiceId);
+        } else if (data.status === "failed") {
+          throw new Error("Voice cloning failed");
+        } else {
+          // Если еще обрабатывается, проверяем снова через 2 секунды
+          setTimeout(checkStatus, 2000);
+        }
+      };
+
+      await checkStatus();
+    } catch (err) {
+      console.error("Status polling error:", err);
+      setError(err instanceof Error ? err.message : "Processing failed");
+      setIsUploading(false);
+      setIsProcessing(false);
+    }
+  };
+
+  // Функция для воспроизведения клонированного голоса
+  const playClonedAudio = () => {
+    if (!clonedAudioData?.clonedUrl) {
+      console.error("No cloned audio URL available");
+      setError("No cloned audio available to play");
+      return;
+    }
+
+    console.log("Playing cloned audio from URL:", clonedAudioData.clonedUrl);
+
+    try {
+      const audio = new Audio(clonedAudioData.clonedUrl);
+
+      // Добавляем обработчики событий для лучшей отладки
+      audio.onloadstart = () => console.log("Audio loading started");
+      audio.oncanplay = () => console.log("Audio can start playing");
+      audio.onplay = () => console.log("Audio playback started");
+      audio.onended = () => console.log("Audio playback ended");
+      audio.onerror = (e) => {
+        console.error("Audio error:", e);
+        setError("Failed to load cloned audio file");
+      };
+
+      // Очищаем предыдущие ошибки
+      setError(null);
+
+      // Устанавливаем CORS режим если нужно
+      audio.crossOrigin = "anonymous";
+
+      audio.play().catch((err) => {
+        console.error("Error playing cloned audio:", err);
+
+        // Попробуем альтернативный способ через создание временного URL
+        if (err.name === "NotAllowedError") {
+          setError(
+            "Audio playback blocked by browser. Please allow audio autoplay."
+          );
+        } else {
+          // Попробуем загрузить файл и создать blob URL
+          fetch(clonedAudioData.clonedUrl)
+            .then((response) => response.blob())
+            .then((blob) => {
+              const blobUrl = URL.createObjectURL(blob);
+              const newAudio = new Audio(blobUrl);
+              newAudio.play().catch((fallbackErr) => {
+                console.error("Fallback audio play failed:", fallbackErr);
+                setError(`Failed to play cloned audio: ${fallbackErr.message}`);
+              });
+            })
+            .catch((fetchErr) => {
+              console.error("Failed to fetch audio file:", fetchErr);
+              setError(`Failed to load cloned audio: ${fetchErr.message}`);
+            });
+        }
+      });
+    } catch (err) {
+      console.error("Error creating audio element:", err);
+      setError("Failed to create audio player");
+    }
+  };
+
+  // Функция для загрузки готовых голосовых ответов
+  const loadChatResponses = async (voiceId: string) => {
+    try {
+      console.log("🔄 Starting to load chat responses for voiceId:", voiceId);
+      setIsLoadingResponses(true);
+      setError(null);
+
+      const url = `http://localhost:3000/audio/chat-responses?voiceId=${encodeURIComponent(
+        voiceId
+      )}`;
+      console.log("📡 Making request to:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+
+      console.log("📥 Response received, status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load chat responses: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const responses = await response.json();
+      console.log("✅ Chat responses loaded successfully:", responses);
+      setChatResponses(responses || []);
+      setIsLoadingResponses(false);
+    } catch (err) {
+      console.error("❌ Error loading chat responses:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load chat responses"
+      );
+      setIsLoadingResponses(false);
+    }
+  };
+
+  // Функция для воспроизведения голосового ответа
+  const playChatResponse = (responseId: number, audioUrl: string) => {
+    console.log("Playing chat response:", responseId, audioUrl);
+
+    // Останавливаем текущее воспроизведение если есть
+    if (currentlyPlaying !== null) {
+      setCurrentlyPlaying(null);
+    }
+
+    try {
+      const audio = new Audio(audioUrl);
+
+      audio.onplay = () => {
+        setCurrentlyPlaying(responseId);
+        console.log("Chat response playback started");
+      };
+
+      audio.onended = () => {
+        setCurrentlyPlaying(null);
+        console.log("Chat response playback ended");
+      };
+
+      audio.onerror = (e) => {
+        console.error("Chat response audio error:", e);
+        setCurrentlyPlaying(null);
+        setError("Failed to play chat response");
+      };
+
+      // Устанавливаем CORS режим
+      audio.crossOrigin = "anonymous";
+
+      audio.play().catch((err) => {
+        console.error("Error playing chat response:", err);
+        setCurrentlyPlaying(null);
+
+        // Fallback через fetch
+        fetch(audioUrl)
+          .then((response) => response.blob())
+          .then((blob) => {
+            const blobUrl = URL.createObjectURL(blob);
+            const newAudio = new Audio(blobUrl);
+            newAudio.onplay = () => setCurrentlyPlaying(responseId);
+            newAudio.onended = () => setCurrentlyPlaying(null);
+            newAudio.play().catch((fallbackErr) => {
+              console.error("Fallback chat response play failed:", fallbackErr);
+              setCurrentlyPlaying(null);
+              setError(`Failed to play chat response: ${fallbackErr.message}`);
+            });
+          })
+          .catch((fetchErr) => {
+            console.error("Failed to fetch chat response audio:", fetchErr);
+            setCurrentlyPlaying(null);
+            setError(`Failed to load chat response audio: ${fetchErr.message}`);
+          });
+      });
+    } catch (err) {
+      console.error("Error creating chat response audio element:", err);
+      setCurrentlyPlaying(null);
+      setError("Failed to create audio player for chat response");
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -412,17 +703,129 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           <div className="audio-result">
             <div className="result-info">
               <p>Recorded audio ready for playback</p>
+              {error && (
+                <div
+                  className="error-message"
+                  style={{ color: "#ff6b6b", marginTop: "10px" }}
+                >
+                  Error: {error}
+                </div>
+              )}
             </div>
 
             <div className="result-actions">
               <button onClick={playRecording} className="action-button primary">
                 ▶️ Play Recording
               </button>
+
+              <button
+                onClick={uploadAudio}
+                className="action-button secondary"
+                disabled={isUploading || isProcessing}
+              >
+                {isUploading
+                  ? "⏳ Uploading..."
+                  : isProcessing
+                  ? "🔄 Processing..."
+                  : "🚀 Clone Voice"}
+              </button>
             </div>
 
             <div className="waveform-container">
               <div ref={waveformRef} className="waveform"></div>
             </div>
+          </div>
+        )}
+
+        {clonedAudioData && (
+          <div className="cloned-result">
+            <div className="result-info">
+              <h3>Voice Cloning Complete! 🎉</h3>
+              <p>Your voice has been successfully cloned</p>
+              <div className="clone-details">
+                <p>
+                  <strong>Voice ID:</strong> {clonedAudioData.voiceId}
+                </p>
+                <p>
+                  <strong>Status:</strong> {clonedAudioData.status}
+                </p>
+                <p>
+                  <strong>Created:</strong>{" "}
+                  {new Date(clonedAudioData.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="result-actions">
+              <button
+                onClick={playClonedAudio}
+                className="action-button primary"
+              >
+                ▶️ Play Cloned Voice
+              </button>
+
+              <button
+                onClick={() => {
+                  console.log("🔄 Manual chat responses reload triggered");
+                  loadChatResponses(clonedAudioData.voiceId);
+                }}
+                className="action-button secondary"
+                disabled={isLoadingResponses}
+              >
+                {isLoadingResponses ? "⏳ Loading..." : "🔄 Reload Chat"}
+              </button>
+
+              <a
+                href={clonedAudioData.clonedUrl}
+                download="cloned-voice.mp3"
+                className="action-button secondary"
+                style={{ textDecoration: "none" }}
+              >
+                💾 Download Cloned Audio
+              </a>
+            </div>
+          </div>
+        )}
+
+        {clonedAudioData && (
+          <div className="chat-responses">
+            <div className="responses-header">
+              <h3>💬 Чат с вашим голосовым двойником</h3>
+              <p>Нажмите на кнопку, чтобы прослушать ответ</p>
+              {isLoadingResponses && (
+                <p className="loading-text">⏳ Загружаем ответы...</p>
+              )}
+            </div>
+
+            {chatResponses.length > 0 ? (
+              <div className="responses-grid">
+                {chatResponses.map((response) => (
+                  <div key={response.id} className="response-item">
+                    <div className="response-question">
+                      <h4>"{response.question}"</h4>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        playChatResponse(response.id, response.audioUrl)
+                      }
+                      className={`response-play-button ${
+                        currentlyPlaying === response.id ? "playing" : ""
+                      }`}
+                      disabled={currentlyPlaying === response.id}
+                    >
+                      {currentlyPlaying === response.id
+                        ? "🔄 Играет..."
+                        : "▶️ Прослушать"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : !isLoadingResponses ? (
+              <div className="no-responses">
+                <p>Готовые ответы недоступны</p>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
