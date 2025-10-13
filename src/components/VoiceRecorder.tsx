@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import WaveSurfer from "wavesurfer.js";
+import axios from "axios";
 import "./VoiceRecorder.css";
 
 interface VoiceRecorderProps {
@@ -35,6 +36,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   >([]);
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
   const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null);
+  const [showChatSection, setShowChatSection] = useState(false);
 
   const waveformRef = useRef<HTMLDivElement>(null);
   const realtimeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,14 +63,12 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   // Функция для рисования волны в реальном времени
   const drawRealTimeWave = useCallback(() => {
     if (!analyserRef.current || !realtimeCanvasRef.current) {
-      console.log("Analyser or canvas not available");
       return;
     }
 
     const canvas = realtimeCanvasRef.current;
     const canvasCtx = canvas.getContext("2d");
     if (!canvasCtx) {
-      console.log("Canvas context not available");
       return;
     }
 
@@ -76,7 +76,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
-    console.log("Starting animation loop...");
     isAnimatingRef.current = true;
 
     const draw = () => {
@@ -84,7 +83,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         // Очищаем canvas при остановке записи
         canvasCtx.fillStyle = "#141414";
         canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-        console.log("Animation stopped");
         return;
       }
 
@@ -103,7 +101,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       const totalBars = Math.floor(canvas.width / (barWidth + barGap));
       const step = Math.floor(bufferLength / totalBars);
 
-      let barsDrawn = 0;
       let hasAudio = false;
 
       // Создаем массив высот для интерполяции
@@ -170,13 +167,11 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         canvasCtx.beginPath();
         canvasCtx.roundRect(x, y, barWidth, barHeight, radius);
         canvasCtx.fill();
-
-        barsDrawn++;
       }
 
       // Логируем только если есть изменения в аудио
       if (hasAudio) {
-        console.log(`Audio detected - Drew ${barsDrawn} bars`);
+        // Audio activity detected
       }
     };
 
@@ -187,7 +182,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   // Инициализация аудио контекста для визуализации в реальном времени
   const initRealtimeVisualization = useCallback(async () => {
     try {
-      console.log("Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -196,7 +190,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         },
       });
 
-      console.log("Microphone access granted");
       streamRef.current = stream;
 
       const audioContext = new (window.AudioContext ||
@@ -213,8 +206,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
-
-      console.log("Audio context and analyser created");
 
       // Создаем MediaRecorder для записи
       const mediaRecorder = new MediaRecorder(stream);
@@ -236,10 +227,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         audioChunks.length = 0;
       };
 
-      console.log("MediaRecorder initialized");
       return true;
-    } catch (error) {
-      console.error("Ошибка при инициализации визуализации:", error);
+    } catch {
       return false;
     }
   }, [onAudioRecorded]);
@@ -267,7 +256,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = rect.height;
-      console.log(`Canvas size set to: ${canvas.width}x${canvas.height}`);
     }
   }, []);
 
@@ -300,8 +288,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   }, [audioURL]);
 
   const startRecording = async () => {
-    console.log("Attempting to start recording...");
-
     try {
       // Инициализируем визуализацию в реальном времени
       const initialized = await initRealtimeVisualization();
@@ -310,15 +296,12 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         return;
       }
 
-      console.log("Visualization initialized successfully");
-
       // Начинаем запись с MediaRecorder
       if (mediaRecorderRef.current) {
         mediaRecorderRef.current.start();
         setIsRecording(true);
         setRecordingTime(0);
 
-        console.log("Starting real-time visualization...");
         // Запускаем визуализацию
         drawRealTimeWave();
 
@@ -332,18 +315,13 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             return prev + 1;
           });
         }, 1000);
-
-        console.log("Recording started with real-time visualization");
       }
     } catch (error) {
-      console.error("Ошибка при записи:", error);
       alert("Не удалось получить доступ к микрофону: " + error);
     }
   };
 
   const stopRecording = () => {
-    console.log("Stopping recording...");
-
     // Останавливаем анимацию
     stopAnimation();
 
@@ -368,8 +346,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
-
-    console.log("Recording stopped and resources cleaned up");
   };
 
   const playRecording = () => {
@@ -395,6 +371,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     try {
       setIsUploading(true);
       setError(null);
+      setShowChatSection(true); // Показываем секцию чата сразу после нажатия
+      setIsLoadingResponses(true); // Включаем индикатор загрузки
 
       // Получаем blob из URL
       const response = await fetch(audioURL);
@@ -408,30 +386,22 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       formData.append("file", mp3Blob, "recording.wav"); // Изменили с "audio" на "file"
 
       // Отправляем на сервер
-      const uploadResponse = await fetch("http://localhost:3000/audio/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const uploadResponse = await axios.post(
+        "http://localhost:3000/audio/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json().catch(() => null);
-        console.error("Server error response:", errorData);
-        throw new Error(
-          `Upload failed: ${uploadResponse.statusText}${
-            errorData ? ` - ${errorData.message}` : ""
-          }`
-        );
-      }
-
-      const uploadResult = await uploadResponse.json();
+      const uploadResult = uploadResponse.data;
       const audioId = uploadResult.id;
-
-      console.log("Audio uploaded successfully, ID:", audioId);
 
       // Начинаем проверку статуса
       pollAudioStatus(audioId);
     } catch (err) {
-      console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Upload failed");
       setIsUploading(false);
     }
@@ -443,30 +413,26 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       setIsProcessing(true);
 
       const checkStatus = async (): Promise<void> => {
-        const response = await fetch(
+        const response = await axios.get(
           `http://localhost:3000/audio/status/${id}`
         );
 
-        if (!response.ok) {
-          throw new Error(`Status check failed: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log("Status check result:", data);
+        const data = response.data;
 
         if (data.status === "completed") {
           setClonedAudioData(data);
           setIsUploading(false);
           setIsProcessing(false);
           onVoiceCloned(true);
-          console.log("Voice cloning completed!", data);
-          console.log(
-            "🚀 About to load chat responses with voiceId:",
-            data.voiceId
-          );
 
-          // Загружаем готовые голосовые ответы
-          loadChatResponses(data.voiceId);
+          // Ждем 10 секунд перед загрузкой готовых голосовых ответов
+          // чтобы сервер успел их сгенерировать
+          console.log(
+            "⏳ Waiting 25 seconds for voice responses to be generated..."
+          );
+          setTimeout(() => {
+            loadChatResponses(data.voiceId);
+          }, 25000);
         } else if (data.status === "failed") {
           throw new Error("Voice cloning failed");
         } else {
@@ -477,108 +443,59 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
       await checkStatus();
     } catch (err) {
-      console.error("Status polling error:", err);
       setError(err instanceof Error ? err.message : "Processing failed");
       setIsUploading(false);
       setIsProcessing(false);
     }
   };
 
-  // Функция для воспроизведения клонированного голоса
-  const playClonedAudio = () => {
-    if (!clonedAudioData?.clonedUrl) {
-      console.error("No cloned audio URL available");
-      setError("No cloned audio available to play");
-      return;
-    }
-
-    console.log("Playing cloned audio from URL:", clonedAudioData.clonedUrl);
-
-    try {
-      const audio = new Audio(clonedAudioData.clonedUrl);
-
-      // Добавляем обработчики событий для лучшей отладки
-      audio.onloadstart = () => console.log("Audio loading started");
-      audio.oncanplay = () => console.log("Audio can start playing");
-      audio.onplay = () => console.log("Audio playback started");
-      audio.onended = () => console.log("Audio playback ended");
-      audio.onerror = (e) => {
-        console.error("Audio error:", e);
-        setError("Failed to load cloned audio file");
-      };
-
-      // Очищаем предыдущие ошибки
-      setError(null);
-
-      // Устанавливаем CORS режим если нужно
-      audio.crossOrigin = "anonymous";
-
-      audio.play().catch((err) => {
-        console.error("Error playing cloned audio:", err);
-
-        // Попробуем альтернативный способ через создание временного URL
-        if (err.name === "NotAllowedError") {
-          setError(
-            "Audio playback blocked by browser. Please allow audio autoplay."
-          );
-        } else {
-          // Попробуем загрузить файл и создать blob URL
-          fetch(clonedAudioData.clonedUrl)
-            .then((response) => response.blob())
-            .then((blob) => {
-              const blobUrl = URL.createObjectURL(blob);
-              const newAudio = new Audio(blobUrl);
-              newAudio.play().catch((fallbackErr) => {
-                console.error("Fallback audio play failed:", fallbackErr);
-                setError(`Failed to play cloned audio: ${fallbackErr.message}`);
-              });
-            })
-            .catch((fetchErr) => {
-              console.error("Failed to fetch audio file:", fetchErr);
-              setError(`Failed to load cloned audio: ${fetchErr.message}`);
-            });
-        }
-      });
-    } catch (err) {
-      console.error("Error creating audio element:", err);
-      setError("Failed to create audio player");
-    }
-  };
-
   // Функция для загрузки готовых голосовых ответов
   const loadChatResponses = async (voiceId: string) => {
     try {
-      console.log("🔄 Starting to load chat responses for voiceId:", voiceId);
+      console.log(`🔄 Loading chat responses for voiceId: ${voiceId}`);
+
       setIsLoadingResponses(true);
       setError(null);
 
-      const url = `http://localhost:3000/audio/chat-responses?voiceId=${encodeURIComponent(
-        voiceId
-      )}`;
-      console.log("📡 Making request to:", url);
+      // Делаем простой запрос
+      const response = await axios.get(
+        `http://localhost:3000/audio/chat-responses?voiceId=${voiceId}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
+      const responses = response.data;
+      console.log(
+        `📥 Received ${
+          Array.isArray(responses) ? responses.length : 0
+        } responses`
+      );
 
-      console.log("📥 Response received, status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to load chat responses: ${response.status} ${response.statusText}`
+      // Проверяем результат и обновляем состояние
+      if (responses && Array.isArray(responses) && responses.length > 0) {
+        console.log(
+          `✅ Successfully loaded ${responses.length} chat responses`
         );
+        responses.forEach(
+          (
+            item: { id: number; question: string; audioUrl: string },
+            index: number
+          ) => {
+            console.log(`   ${index + 1}. "${item.question}" (ID: ${item.id})`);
+          }
+        );
+        setChatResponses(responses);
+      } else {
+        console.log(`⚠️ No responses available yet`);
+        setChatResponses([]);
       }
 
-      const responses = await response.json();
-      console.log("✅ Chat responses loaded successfully:", responses);
-      setChatResponses(responses || []);
       setIsLoadingResponses(false);
     } catch (err) {
-      console.error("❌ Error loading chat responses:", err);
+      console.log(`💥 Error loading responses:`, err);
       setError(
         err instanceof Error ? err.message : "Failed to load chat responses"
       );
@@ -588,8 +505,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   // Функция для воспроизведения голосового ответа
   const playChatResponse = (responseId: number, audioUrl: string) => {
-    console.log("Playing chat response:", responseId, audioUrl);
-
     // Останавливаем текущее воспроизведение если есть
     if (currentlyPlaying !== null) {
       setCurrentlyPlaying(null);
@@ -600,16 +515,13 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
       audio.onplay = () => {
         setCurrentlyPlaying(responseId);
-        console.log("Chat response playback started");
       };
 
       audio.onended = () => {
         setCurrentlyPlaying(null);
-        console.log("Chat response playback ended");
       };
 
-      audio.onerror = (e) => {
-        console.error("Chat response audio error:", e);
+      audio.onerror = () => {
         setCurrentlyPlaying(null);
         setError("Failed to play chat response");
       };
@@ -617,8 +529,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       // Устанавливаем CORS режим
       audio.crossOrigin = "anonymous";
 
-      audio.play().catch((err) => {
-        console.error("Error playing chat response:", err);
+      audio.play().catch(() => {
         setCurrentlyPlaying(null);
 
         // Fallback через fetch
@@ -630,19 +541,16 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             newAudio.onplay = () => setCurrentlyPlaying(responseId);
             newAudio.onended = () => setCurrentlyPlaying(null);
             newAudio.play().catch((fallbackErr) => {
-              console.error("Fallback chat response play failed:", fallbackErr);
               setCurrentlyPlaying(null);
               setError(`Failed to play chat response: ${fallbackErr.message}`);
             });
           })
           .catch((fetchErr) => {
-            console.error("Failed to fetch chat response audio:", fetchErr);
             setCurrentlyPlaying(null);
             setError(`Failed to load chat response audio: ${fetchErr.message}`);
           });
       });
-    } catch (err) {
-      console.error("Error creating chat response audio element:", err);
+    } catch {
       setCurrentlyPlaying(null);
       setError("Failed to create audio player for chat response");
     }
@@ -671,7 +579,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               🎙️
             </button>
             <p className="record-status">
-              {isRecording ? "Recording..." : "Start recording"}
+              {isRecording ? "Запись..." : "Начать запись"}
             </p>
           </div>
 
@@ -702,20 +610,20 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         {audioURL && !isRecording && (
           <div className="audio-result">
             <div className="result-info">
-              <p>Recorded audio ready for playback</p>
+              <p>Аудио записано и готово к воспроизведению</p>
               {error && (
                 <div
                   className="error-message"
                   style={{ color: "#ff6b6b", marginTop: "10px" }}
                 >
-                  Error: {error}
+                  Ошибка: {error}
                 </div>
               )}
             </div>
 
             <div className="result-actions">
               <button onClick={playRecording} className="action-button primary">
-                ▶️ Play Recording
+                ▶️ Прослушать запись
               </button>
 
               <button
@@ -724,10 +632,10 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 disabled={isUploading || isProcessing}
               >
                 {isUploading
-                  ? "⏳ Uploading..."
+                  ? "⏳ Загрузка..."
                   : isProcessing
-                  ? "🔄 Processing..."
-                  : "🚀 Clone Voice"}
+                  ? "🔄 Обработка..."
+                  : "🚀 Клонировать голос"}
               </button>
             </div>
 
@@ -737,63 +645,20 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           </div>
         )}
 
-        {clonedAudioData && (
-          <div className="cloned-result">
-            <div className="result-info">
-              <h3>Voice Cloning Complete! 🎉</h3>
-              <p>Your voice has been successfully cloned</p>
-              <div className="clone-details">
-                <p>
-                  <strong>Voice ID:</strong> {clonedAudioData.voiceId}
-                </p>
-                <p>
-                  <strong>Status:</strong> {clonedAudioData.status}
-                </p>
-                <p>
-                  <strong>Created:</strong>{" "}
-                  {new Date(clonedAudioData.createdAt).toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="result-actions">
-              <button
-                onClick={playClonedAudio}
-                className="action-button primary"
-              >
-                ▶️ Play Cloned Voice
-              </button>
-
-              <button
-                onClick={() => {
-                  console.log("🔄 Manual chat responses reload triggered");
-                  loadChatResponses(clonedAudioData.voiceId);
-                }}
-                className="action-button secondary"
-                disabled={isLoadingResponses}
-              >
-                {isLoadingResponses ? "⏳ Loading..." : "🔄 Reload Chat"}
-              </button>
-
-              <a
-                href={clonedAudioData.clonedUrl}
-                download="cloned-voice.mp3"
-                className="action-button secondary"
-                style={{ textDecoration: "none" }}
-              >
-                💾 Download Cloned Audio
-              </a>
-            </div>
-          </div>
-        )}
-
-        {clonedAudioData && (
+        {showChatSection && (
           <div className="chat-responses">
             <div className="responses-header">
               <h3>💬 Чат с вашим голосовым двойником</h3>
-              <p>Нажмите на кнопку, чтобы прослушать ответ</p>
-              {isLoadingResponses && (
-                <p className="loading-text">⏳ Загружаем ответы...</p>
+              {isLoadingResponses ? (
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p className="loading-text">
+                    🎙️ Обработка вашего голоса и генерация ответов...
+                  </p>
+                  <p className="loading-subtext">Это займет около 25 секунд</p>
+                </div>
+              ) : (
+                <p>Нажмите на кнопку, чтобы прослушать ответ</p>
               )}
             </div>
 
@@ -823,7 +688,10 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               </div>
             ) : !isLoadingResponses ? (
               <div className="no-responses">
-                <p>Готовые ответы недоступны</p>
+                <p>
+                  Ответы пока недоступны. Попробуйте обновить страницу через
+                  несколько секунд.
+                </p>
               </div>
             ) : null}
           </div>

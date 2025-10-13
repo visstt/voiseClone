@@ -1,7 +1,6 @@
 import { useState } from "react";
 import "./App.css";
 import VoiceRecorder from "./components/VoiceRecorder";
-import ChatInterface from "./components/ChatInterface";
 
 function App() {
   const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
@@ -14,8 +13,6 @@ function App() {
           onAudioRecorded={setRecordedAudio}
           onVoiceCloned={setIsVoiceCloned}
         />
-
-        {isVoiceCloned && <ChatInterface recordedAudio={recordedAudio} />}
       </main>
     </div>
   );
