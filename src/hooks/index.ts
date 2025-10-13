@@ -4,3 +4,5 @@ export {
   useChatResponses,
   useAudioPlayer,
 } from "./useVoiceAPI";
+
+export { useAudioVisualization } from "./useAudioVisualization";

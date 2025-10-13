@@ -6,6 +6,7 @@ import {
   useAudioStatus,
   useChatResponses,
   useAudioPlayer,
+  useAudioVisualization,
 } from "../hooks";
 
 interface VoiceRecorderProps {
@@ -51,211 +52,30 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  // Для работы с реальным временем
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationIdRef = useRef<number | null>(null);
-  const isAnimatingRef = useRef<boolean>(false);
+  // Callback для обработки записанного аудио
+  const handleRecordingStop = useCallback(
+    (audioBlob: Blob) => {
+      const url = URL.createObjectURL(audioBlob);
+      setAudioURL(url);
+      onAudioRecorded(audioBlob);
+    },
+    [onAudioRecorded]
+  );
 
-  // Функция для остановки анимации
-  const stopAnimation = useCallback(() => {
-    isAnimatingRef.current = false;
-    if (animationIdRef.current) {
-      cancelAnimationFrame(animationIdRef.current);
-      animationIdRef.current = null;
-    }
-  }, []);
-
-  // Функция для рисования волны в реальном времени
-  const drawRealTimeWave = useCallback(() => {
-    if (!analyserRef.current || !realtimeCanvasRef.current) {
-      return;
-    }
-
-    const canvas = realtimeCanvasRef.current;
-    const canvasCtx = canvas.getContext("2d");
-    if (!canvasCtx) {
-      return;
-    }
-
-    const analyser = analyserRef.current;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    isAnimatingRef.current = true;
-
-    const draw = () => {
-      if (!isAnimatingRef.current) {
-        // Очищаем canvas при остановке записи
-        canvasCtx.fillStyle = "#141414";
-        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-
-      animationIdRef.current = requestAnimationFrame(draw);
-
-      // Получаем данные времени (лучше для визуализации голоса в реальном времени)
-      analyser.getByteTimeDomainData(dataArray);
-
-      // Очищаем канвас
-      canvasCtx.fillStyle = "#141414";
-      canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Рисуем волну как вертикальные полоски (как в WaveSurfer)
-      const barWidth = 4; // Увеличиваем ширину полосок
-      const barGap = 1;
-      const totalBars = Math.floor(canvas.width / (barWidth + barGap));
-      const step = Math.floor(bufferLength / totalBars);
-
-      let hasAudio = false;
-
-      // Создаем массив высот для интерполяции
-      const barHeights: number[] = [];
-
-      // Сначала вычисляем все высоты
-      for (let i = 0; i < totalBars; i++) {
-        const dataIndex = i * step;
-        const value = dataArray[dataIndex];
-
-        // Для временных данных: нормализуем от центра (128)
-        const normalizedValue = Math.abs(value - 128) / 128.0;
-
-        if (normalizedValue > 0.01) hasAudio = true;
-
-        // Создаем более чувствительную и выразительную визуализацию
-        // Уменьшаем базовую линию и увеличиваем чувствительность к звуку
-        const baseHeight = 4; // Уменьшенная базовая линия
-        const amplifiedValue = Math.pow(normalizedValue, 0.7) * 2.5; // Увеличиваем чувствительность
-        const barHeight = Math.max(
-          baseHeight,
-          amplifiedValue * canvas.height * 0.8
-        );
-
-        barHeights.push(barHeight);
-      }
-
-      // Применяем сглаживание к высотам для более плавных переходов
-      const smoothedHeights: number[] = [];
-      for (let i = 0; i < barHeights.length; i++) {
-        let sum = barHeights[i];
-        let count = 1;
-
-        // Усредняем с соседними значениями для плавности
-        if (i > 0) {
-          sum += barHeights[i - 1];
-          count++;
-        }
-        if (i < barHeights.length - 1) {
-          sum += barHeights[i + 1];
-          count++;
-        }
-
-        smoothedHeights.push(sum / count);
-      }
-
-      // Теперь рисуем с плавными высотами
-      for (let i = 0; i < totalBars; i++) {
-        const barHeight = smoothedHeights[i];
-
-        const x = i * (barWidth + barGap);
-        const y = (canvas.height - barHeight) / 2;
-
-        // Создаем градиент для красивого эффекта
-        const gradient = canvasCtx.createLinearGradient(0, y, 0, y + barHeight);
-        gradient.addColorStop(0, "#7C3AED");
-        gradient.addColorStop(0.5, "#4F46E5");
-        gradient.addColorStop(1, "#3B82F6");
-
-        canvasCtx.fillStyle = gradient;
-
-        // Рисуем закругленный прямоугольник для более плавного вида
-        const radius = Math.min(barWidth / 2, 2); // Радиус закругления
-        canvasCtx.beginPath();
-        canvasCtx.roundRect(x, y, barWidth, barHeight, radius);
-        canvasCtx.fill();
-      }
-
-      // Логируем только если есть изменения в аудио
-      if (hasAudio) {
-        // Audio activity detected
-      }
-    };
-
-    // Начинаем цикл анимации
-    draw();
-  }, []);
-
-  // Инициализация аудио контекста для визуализации в реальном времени
-  const initRealtimeVisualization = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-
-      streamRef.current = stream;
-
-      const audioContext = new (window.AudioContext ||
-        (window as typeof window & { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext)();
-      audioContextRef.current = audioContext;
-
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048; // Увеличиваем для большей детализации
-      analyser.smoothingTimeConstant = 0.8; // Увеличиваем сглаживание для более плавной визуализации
-      analyser.minDecibels = -90; // Увеличиваем чувствительность к тихим звукам
-      analyser.maxDecibels = -10; // Расширяем динамический диапазон
-      analyserRef.current = analyser;
-
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      // Создаем MediaRecorder для записи
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      const audioChunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioURL(url);
-        onAudioRecorded(audioBlob);
-        audioChunks.length = 0;
-      };
-
-      return true;
-    } catch {
-      return false;
-    }
-  }, [onAudioRecorded]);
+  // Используем хук для визуализации аудио
+  const { startVisualization, stopVisualization } = useAudioVisualization({
+    canvasRef: realtimeCanvasRef,
+    onRecordingStop: handleRecordingStop,
+  });
 
   useEffect(() => {
     // Cleanup при размонтировании компонента
     return () => {
-      stopAnimation();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [stopAnimation]);
+  }, []);
 
   // Настройка canvas размеров
   useEffect(() => {
@@ -297,62 +117,40 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   const startRecording = async () => {
     try {
-      // Инициализируем визуализацию в реальном времени
-      const initialized = await initRealtimeVisualization();
+      // Инициализируем визуализацию в реальном времени через хук
+      const initialized = await startVisualization();
       if (!initialized) {
         alert("Не удалось инициализировать визуализацию");
         return;
       }
 
-      // Начинаем запись с MediaRecorder
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.start();
-        setIsRecording(true);
-        setRecordingTime(0);
+      setIsRecording(true);
+      setRecordingTime(0);
 
-        // Запускаем визуализацию
-        drawRealTimeWave();
-
-        // Таймер записи (максимум 60 секунд)
-        timerRef.current = setInterval(() => {
-          setRecordingTime((prev) => {
-            if (prev >= 60) {
-              stopRecording();
-              return 60;
-            }
-            return prev + 1;
-          });
-        }, 1000);
-      }
+      // Таймер записи (максимум 60 секунд)
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          if (prev >= 60) {
+            stopRecording();
+            return 60;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     } catch (error) {
       alert("Не удалось получить доступ к микрофону: " + error);
     }
   };
 
   const stopRecording = () => {
-    // Останавливаем анимацию
-    stopAnimation();
-
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
+    // Останавливаем визуализацию через хук
+    stopVisualization();
 
     setIsRecording(false);
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-
-    // Очищаем ресурсы
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
     }
   };
 

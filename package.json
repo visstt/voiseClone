@@ -13,6 +13,7 @@
     "@types/dom-mediacapture-record": "^1.0.22",
     "@types/wavesurfer.js": "^6.0.12",
     "axios": "^1.12.2",
+    "dotenv": "^17.2.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "wavesurfer.js": "^7.11.0"
