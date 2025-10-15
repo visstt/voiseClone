@@ -84,8 +84,9 @@ export const createAudioContext = (): AudioContext | null => {
 /**
  * Симуляция отправки аудио в API для клонирования голоса
  */
- 
+
 export const cloneVoice = async (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   audioBlob: Blob
 ): Promise<{ success: boolean; voiceId?: string }> => {
   return new Promise((resolve) => {
@@ -102,9 +103,10 @@ export const cloneVoice = async (
 /**
  * Симуляция генерации речи с клонированным голосом
  */
- 
+
 export const generateSpeech = async (
   text: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   voiceId: string
 ): Promise<Blob> => {
   return new Promise((resolve) => {
