@@ -11,7 +11,7 @@ import {
 
 interface VoiceRecorderProps {
   onAudioRecorded: (audio: Blob) => void;
-  onVoiceCloned: (cloned: boolean) => void;
+  onVoiceCloned: (success: boolean, voiceId?: string) => void;
 }
 
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
@@ -190,7 +190,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       if (audioId) {
         // Начинаем проверку статуса с callback для загрузки ответов
         pollAudioStatus(audioId, (data) => {
-          onVoiceCloned(true);
+          onVoiceCloned(true, data.voiceId);
           loadChatResponses(data.voiceId);
         });
       } else {
@@ -211,11 +211,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   return (
     <div className="voice-recorder">
-      <div className="app-header">
-        <div className="app-icon">🎙️</div>
-        <h1 className="app-title">VoiceClone</h1>
-      </div>
-
       <div className="app-main">
         <div className="recording-interface">
           <div className="record-button-wrapper">

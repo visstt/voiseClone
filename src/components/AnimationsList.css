@@ -1,0 +1,276 @@
+.animations-list {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.animations-list.loading,
+.animations-list.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+.retry-button {
+  padding: 8px 16px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #4338ca;
+}
+
+.animations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.animations-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.refresh-button {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background: #e5e7eb;
+}
+
+.no-animations {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.animations-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.animation-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.animation-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.animation-card.completed {
+  border-left: 4px solid #10b981;
+}
+
+.animation-card.failed {
+  border-left: 4px solid #ef4444;
+}
+
+.animation-card.processing,
+.animation-card.pending {
+  border-left: 4px solid #f59e0b;
+}
+
+.animation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.status-text {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.completed .status-text {
+  color: #10b981;
+}
+
+.failed .status-text {
+  color: #ef4444;
+}
+
+.processing .status-text,
+.pending .status-text {
+  color: #f59e0b;
+}
+
+.animation-date {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.animation-text {
+  margin-bottom: 16px;
+}
+
+.animation-text p {
+  margin: 0;
+  font-style: italic;
+  color: #374151;
+  line-height: 1.5;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #4f46e5;
+}
+
+.animation-media {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.media-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-item label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.media-item audio {
+  width: 100%;
+  height: 40px;
+}
+
+.animation-video {
+  width: 100%;
+  max-height: 300px;
+  border-radius: 6px;
+}
+
+.progress-indicator {
+  margin-top: 12px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #8b5cf6);
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+.progress-indicator p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.error-indicator {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.error-indicator p {
+  margin: 0;
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .animations-list {
+    padding: 16px;
+  }
+
+  .animations-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .refresh-button {
+    align-self: center;
+  }
+
+  .animation-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .animation-video {
+    max-height: 200px;
+  }
+}
