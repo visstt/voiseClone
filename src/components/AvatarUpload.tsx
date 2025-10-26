@@ -10,7 +10,7 @@ interface AvatarUploadProps {
 const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
+  const [fileType, setFileType] = useState<"image" | "video" | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -24,21 +24,23 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
     // Validate file type - now supporting both images and videos
     const isImage = file.type.match(/^image\/(jpeg|jpg|png)$/);
     const isVideo = file.type.match(/^video\/(mp4|webm|ogg|avi|mov)$/);
-    
+
     if (!isImage && !isVideo) {
-      setError("Пожалуйста, выберите изображение (JPG, PNG) или видео (MP4, WebM, OGG, AVI, MOV)");
+      setError(
+        "Пожалуйста, выберите изображение (JPG, PNG) или видео (MP4, WebM, OGG, AVI, MOV)"
+      );
       return;
     }
 
     // Validate file size (10MB for videos, 5MB for images)
     const maxSize = isVideo ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError(`Размер файла должен быть меньше ${isVideo ? '10' : '5'}МБ`);
+      setError(`Размер файла должен быть меньше ${isVideo ? "10" : "5"}МБ`);
       return;
     }
 
     setSelectedFile(file);
-    setFileType(isVideo ? 'video' : 'image');
+    setFileType(isVideo ? "video" : "image");
     setError(null);
 
     // Create preview URL
@@ -115,11 +117,11 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
 
           {previewUrl && (
             <div className="preview-section">
-              {fileType === 'video' ? (
-                <video 
-                  src={previewUrl} 
-                  className="preview-video" 
-                  controls 
+              {fileType === "video" ? (
+                <video
+                  src={previewUrl}
+                  className="preview-video"
+                  controls
                   muted
                   preload="metadata"
                 />
