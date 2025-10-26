@@ -301,8 +301,16 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                   </p>
                   <p className="loading-subtext">Это займет около 25 секунд</p>
                 </div>
+              ) : chatResponses.length > 0 ? (
+                <p className="chat-description">
+                  🎯 Ваш голос готов! Нажмите на вопрос, чтобы прослушать ответ
+                  вашего голосового двойника
+                </p>
               ) : (
-                <p>Нажмите на кнопку, чтобы прослушать ответ</p>
+                <p className="chat-description">
+                  ⏳ Голосовые ответы готовятся. Попробуйте обновить страницу
+                  через несколько секунд.
+                </p>
               )}
             </div>
 
@@ -310,22 +318,33 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               <div className="responses-grid">
                 {chatResponses.map((response) => (
                   <div key={response.id} className="response-item">
-                    <div className="response-question">
-                      <h4>"{response.question}"</h4>
-                    </div>
+                    <div className="response-content">
+                      <div className="response-question">
+                        <span className="question-icon">💭</span>
+                        <h4>{response.question}</h4>
+                      </div>
 
-                    <button
-                      onClick={() =>
-                        playChatResponse(response.id, response.audioUrl)
-                      }
-                      className={`response-play-button ${
-                        currentlyPlaying === response.id ? "playing" : ""
-                      }`}
-                    >
-                      {currentlyPlaying === response.id
-                        ? "⏸️ Остановить"
-                        : "▶️ Прослушать"}
-                    </button>
+                      <button
+                        onClick={() =>
+                          playChatResponse(response.id, response.audioUrl)
+                        }
+                        className={`response-play-button ${
+                          currentlyPlaying === response.id ? "playing" : ""
+                        }`}
+                      >
+                        {currentlyPlaying === response.id ? (
+                          <>
+                            <span className="play-icon">⏸️</span>
+                            Остановить
+                          </>
+                        ) : (
+                          <>
+                            <span className="play-icon">▶️</span>
+                            Прослушать
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

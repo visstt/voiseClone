@@ -30,7 +30,7 @@ export interface UploadAvatarRequest {
 }
 
 // API base URL - you can change this to your backend URL
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 /**
  * Upload a face photo to create an avatar
