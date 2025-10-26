@@ -10,6 +10,7 @@ interface AvatarUploadProps {
 const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -20,19 +21,24 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
-      setError("Please select a JPG or PNG image");
+    // Validate file type - now supporting both images and videos
+    const isImage = file.type.match(/^image\/(jpeg|jpg|png)$/);
+    const isVideo = file.type.match(/^video\/(mp4|webm|ogg|avi|mov)$/);
+    
+    if (!isImage && !isVideo) {
+      setError("Пожалуйста, выберите изображение (JPG, PNG) или видео (MP4, WebM, OGG, AVI, MOV)");
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("File size must be less than 5MB");
+    // Validate file size (10MB for videos, 5MB for images)
+    const maxSize = isVideo ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError(`Размер файла должен быть меньше ${isVideo ? '10' : '5'}МБ`);
       return;
     }
 
     setSelectedFile(file);
+    setFileType(isVideo ? 'video' : 'image');
     setError(null);
 
     // Create preview URL
@@ -47,7 +53,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
     event.preventDefault();
 
     if (!selectedFile || !name.trim()) {
-      setError("Please select a photo and enter a name");
+      setError("Пожалуйста, выберите файл и введите название");
       return;
     }
 
@@ -89,7 +95,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
 
   return (
     <div className="avatar-upload">
-      <h3>Upload Face Photo</h3>
+      <h3>Загрузка фото или видео</h3>
 
       <form onSubmit={handleUpload} className="avatar-upload-form">
         <div className="file-upload-section">
@@ -98,24 +104,34 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
               ref={fileInputRef}
               type="file"
               id="avatar-file"
-              accept="image/jpeg,image/jpg,image/png"
+              accept="image/jpeg,image/jpg,image/png,video/mp4,video/webm,video/ogg,video/avi,video/mov"
               onChange={handleFileSelect}
               className="file-input"
             />
             <label htmlFor="avatar-file" className="file-input-label">
-              {selectedFile ? "Change Photo" : "Choose Photo"}
+              {selectedFile ? "Изменить файл" : "Выбрать фото/видео"}
             </label>
           </div>
 
           {previewUrl && (
             <div className="preview-section">
-              <img src={previewUrl} alt="Preview" className="preview-image" />
+              {fileType === 'video' ? (
+                <video 
+                  src={previewUrl} 
+                  className="preview-video" 
+                  controls 
+                  muted
+                  preload="metadata"
+                />
+              ) : (
+                <img src={previewUrl} alt="Preview" className="preview-image" />
+              )}
               <button
                 type="button"
                 onClick={clearSelection}
                 className="clear-button"
               >
-                Remove
+                Удалить
               </button>
             </div>
           )}
@@ -123,25 +139,25 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
 
         <div className="form-fields">
           <div className="field">
-            <label htmlFor="avatar-name">Avatar Name *</label>
+            <label htmlFor="avatar-name">Название аватара *</label>
             <input
               type="text"
               id="avatar-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter avatar name"
+              placeholder="Введите название аватара"
               maxLength={50}
               required
             />
           </div>
 
           <div className="field">
-            <label htmlFor="avatar-description">Description (optional)</label>
+            <label htmlFor="avatar-description">Описание (необязательно)</label>
             <textarea
               id="avatar-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter description"
+              placeholder="Введите описание"
               maxLength={200}
               rows={3}
             />
@@ -155,18 +171,19 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
           className="upload-button"
           disabled={!selectedFile || !name.trim() || isUploading}
         >
-          {isUploading ? "Uploading..." : "Upload Avatar"}
+          {isUploading ? "Загрузка..." : "Загрузить аватар"}
         </button>
       </form>
 
       <div className="upload-requirements">
         <p>
-          <strong>Requirements:</strong>
+          <strong>Требования:</strong>
         </p>
         <ul>
-          <li>Clear face photo (JPG or PNG)</li>
-          <li>Maximum file size: 5MB</li>
-          <li>Face should be well-lit and centered</li>
+          <li>Четкое фото лица (JPG, PNG) или видео (MP4, WebM, MOV)</li>
+          <li>Максимальный размер: 5МБ для фото, 10МБ для видео</li>
+          <li>Лицо должно быть хорошо освещено и центрировано</li>
+          <li>Для видео: желательно несколько секунд без движения головы</li>
         </ul>
       </div>
     </div>

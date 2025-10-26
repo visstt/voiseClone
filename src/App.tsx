@@ -95,7 +95,7 @@ function App() {
               </div>
             ) : !currentAvatar ? (
               <div className="avatar-upload-wrapper">
-                <h3>📷 Загрузите фото для аватара</h3>
+                <h3>� Загрузите фото или видео для аватара</h3>
                 <AvatarUpload onAvatarUploaded={handleAvatarUploaded} />
               </div>
             ) : (

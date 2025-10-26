@@ -68,6 +68,15 @@
   border: 2px solid #e5e7eb;
 }
 
+.preview-video {
+  width: 200px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: #000;
+}
+
 .clear-button {
   padding: 6px 12px;
   background: #ef4444;
@@ -190,5 +199,10 @@
   .preview-image {
     width: 100px;
     height: 100px;
+  }
+
+  .preview-video {
+    width: 160px;
+    height: 90px;
   }
 }

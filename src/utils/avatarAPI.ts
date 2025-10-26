@@ -24,7 +24,7 @@ export interface AnimationRequest {
 }
 
 export interface UploadAvatarRequest {
-  image: File;
+  image: File; // Для совместимости с бэкендом оставляем image, но это может быть и видео
   name: string;
   description?: string;
 }
