@@ -1,7 +1,7 @@
 /* Предотвращение горизонтального переполнения */
 * {
   box-sizing: border-box;
-}
+
 
 .voice-recorder * {
   max-width: 100%;
@@ -90,15 +90,6 @@
   animation: pulse-recording 2s infinite;
 }
 
-@keyframes pulse-recording {
-  0%,
-  100% {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(229, 62, 62, 0.7);
-  }
-  50% {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(229, 62, 62, 0);
-  }
-}
 
 .record-button:disabled {
   opacity: 0.6;
@@ -162,17 +153,6 @@
   transition: height 0.2s ease;
 }
 
-@keyframes wave-pulse {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scaleY(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-}
 
 .recording-timer {
   font-size: 1rem;
@@ -375,7 +355,7 @@
   background: rgba(52, 152, 219, 0.1);
   border-radius: 16px;
   border: 1px solid rgba(52, 152, 219, 0.3);
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.1);
+	box-shadow: 0 4px 15px rgba(52, 152, 219, 0.1);
 }
 
 .responses-header {
@@ -503,15 +483,6 @@
   transform: none;
 }
 
-@keyframes pulse-playing {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
-}
 
 .no-responses {
   text-align: center;
@@ -602,6 +573,41 @@
   border-top-color: #7c3aed;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+
+/* --- KEYFRAMES --- */
+
+@keyframes pulse-recording {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(229, 62, 62, 0.7);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(229, 62, 62, 0);
+  }
+}
+
+@keyframes wave-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scaleY(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes pulse-playing {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes spin {

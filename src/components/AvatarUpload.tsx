@@ -32,12 +32,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
       return;
     }
 
-    // Validate file size (10MB for videos, 5MB for images)
-    const maxSize = isVideo ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError(`Размер файла должен быть меньше ${isVideo ? "10" : "5"}МБ`);
-      return;
-    }
+    // No client-side size limits anymore (server accepts large files)
 
     setSelectedFile(file);
     setFileType(isVideo ? "video" : "image");
@@ -183,7 +178,10 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ onAvatarUploaded }) => {
         </p>
         <ul>
           <li>Четкое фото лица (JPG, PNG) или видео (MP4, WebM, MOV)</li>
-          <li>Максимальный размер: 5МБ для фото, 10МБ для видео</li>
+          <li>
+            Ограничений по размеру со стороны клиента нет (сервер поддерживает
+            большие файлы)
+          </li>
           <li>Лицо должно быть хорошо освещено и центрировано</li>
           <li>Для видео: желательно несколько секунд без движения головы</li>
         </ul>

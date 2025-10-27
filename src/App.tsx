@@ -7,7 +7,7 @@ import AnimationsList from "./components/AnimationsList";
 import type { Avatar, Animation } from "./utils/avatarAPI";
 
 function App() {
-  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [, setRecordedAudio] = useState<Blob | null>(null);
   const [isVoiceCloned, setIsVoiceCloned] = useState(false);
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [currentAvatar, setCurrentAvatar] = useState<Avatar | null>(null);

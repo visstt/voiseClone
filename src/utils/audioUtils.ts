@@ -86,9 +86,10 @@ export const createAudioContext = (): AudioContext | null => {
  */
 
 export const cloneVoice = async (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   audioBlob: Blob
 ): Promise<{ success: boolean; voiceId?: string }> => {
+  // mark param as used to satisfy TypeScript's noUnusedLocals in strict mode
+  void audioBlob;
   return new Promise((resolve) => {
     // Симуляция запроса к API
     setTimeout(() => {
@@ -106,9 +107,10 @@ export const cloneVoice = async (
 
 export const generateSpeech = async (
   text: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   voiceId: string
 ): Promise<Blob> => {
+  // mark param as used to satisfy TypeScript's noUnusedLocals in strict mode
+  void voiceId;
   return new Promise((resolve) => {
     // Симуляция генерации речи
     setTimeout(() => {
